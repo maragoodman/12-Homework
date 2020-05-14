@@ -1,8 +1,11 @@
-var mysql = require("mysql");
-var inquirer = require("inquirer");
+//Install packages
+const inquirer = require("inquirer");
+const mysql = require("mysql");
+const questions = require("./options");
+const consoleTable = require("console.table");
 
-// create the connection information for the sql database
-var connection = mysql.createConnection({
+//connection with the DB
+const connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
   user: "root",
@@ -10,138 +13,271 @@ var connection = mysql.createConnection({
   database: "employee_trackerDB",
 });
 
-// connect to the mysql server and sql database
 connection.connect(function (err) {
   if (err) throw err;
-  start();
 });
 
-// function which prompts the user for what action they should take
-function start() {
-  inquirer
-    .prompt({
-      name: "postOrBid",
-      type: "list",
-      message: "Would you like to do?",
-      choices: ["POST", "BID", "EXIT"],
-    })
-    .then(function (answer) {
-      // based on their answer, either call the bid or the post functions
-      if (answer.postOrBid === "POST") {
-        postAuction();
-      } else if (answer.postOrBid === "BID") {
-        bidAuction();
-      } else {
-        connection.end();
-      }
-    });
+selectOptions();
+async function selectOptions() {
+  const results = await inquirer.prompt(questions.options);
+  switch (results.options) {
+    case "Add new employee":
+      addEmployee();
+      break;
+    case "View all employees":
+      viewAll();
+      break;
+    case "View employees by department":
+      viewByDepartment();
+      break;
+    case "Update employee role":
+      updateRole();
+      break;
+    case "View all roles":
+      viewAllRoles();
+      break;
+    case "Add role":
+      addRole();
+      break;
+    case "View all departments":
+      viewAllDepartments();
+      break;
+    case "Add department":
+      addDepartment();
+      break;
+
+    default:
+      connection.end();
+      break;
+  }
 }
 
-// function to handle posting new items up for auction
-function postAuction() {
-  // prompt for info about the item being put up for auction
-  inquirer
-    .prompt([
-      {
-        name: "item",
-        type: "input",
-        message: "What is the item you would like to submit?",
-      },
-      {
-        name: "category",
-        type: "input",
-        message: "What category would you like to place your auction in?",
-      },
-      {
-        name: "startingBid",
-        type: "input",
-        message: "What would you like your starting bid to be?",
-        validate: function (value) {
-          if (isNaN(value) === false) {
-            return true;
-          }
-          return false;
-        },
-      },
-    ])
-    .then(function (answer) {
-      // when finished prompting, insert a new item into the db with that info
-      connection.query(
-        "INSERT INTO auctions SET ?",
-        {
-          item_name: answer.item,
-          category: answer.category,
-          starting_bid: answer.startingBid || 0,
-          highest_bid: answer.startingBid || 0,
-        },
-        function (err) {
-          if (err) throw err;
-          console.log("Your auction was created successfully!");
-          // re-prompt the user for if they want to bid or post
-          start();
-        }
-      );
-    });
-}
-
-function bidAuction() {
-  // query the database for all items being auctioned
-  connection.query("SELECT * FROM auctions", function (err, results) {
+function addEmployee() {
+  connection.query("SELECT * FROM role", function (err, results) {
     if (err) throw err;
-    // once you have the items, prompt the user for which they'd like to bid on
+
     inquirer
       .prompt([
+        {
+          type: "input",
+          name: "firstname",
+          message: "What is the employee's first name?",
+        },
+        {
+          type: "input",
+          name: "lastname",
+          message: "What is the employee's last name?",
+        },
         {
           name: "choice",
           type: "rawlist",
           choices: function () {
             var choiceArray = [];
             for (var i = 0; i < results.length; i++) {
-              choiceArray.push(results[i].item_name);
+              choiceArray.push(results[i].title);
             }
+
             return choiceArray;
           },
-          message: "What auction would you like to place a bid in?",
+          message: "What is the employee's role?",
         },
+
         {
-          name: "bid",
           type: "input",
-          message: "How much would you like to bid?",
+          name: "manager",
+          message: "Who is the employee's manager?",
         },
       ])
-      .then(function (answer) {
-        // get the information of the chosen item
-        var chosenItem;
+      .then(function (res) {
         for (var i = 0; i < results.length; i++) {
-          if (results[i].item_name === answer.choice) {
-            chosenItem = results[i];
+          if (results[i].title === res.choice) {
+            res.role_id = results[i].id;
           }
         }
-
-        // determine if bid was high enough
-        if (chosenItem.highest_bid < parseInt(answer.bid)) {
-          // bid was high enough, so update db, let the user know, and start over
-          connection.query(
-            "UPDATE auctions SET ? WHERE ?",
-            [
-              {
-                highest_bid: answer.bid,
-              },
-              {
-                id: chosenItem.id,
-              },
-            ],
-            function (error) {
-              if (error) throw err;
-              console.log("Bid placed successfully!");
-              start();
-            }
-          );
-        } else {
-          // bid wasn't high enough, so apologize and start over
-          console.log("Your bid was too low. Try again...");
-          start();
-        }
+        var query = "INSERT INTO employee SET ?";
+        const VALUES = {
+          first_name: res.firstname,
+          last_name: res.lastname,
+          role_id: res.role_id,
+        };
+        connection.query(query, VALUES, function (err) {
+          if (err) throw err;
+          console.log("Employee successfully added!");
+        });
       });
+  });
+}
+
+function viewAll() {
+  connection.query("SELECT * FROM employee_trackerDB.employee;", function (
+    err,
+    results
+  ) {
+    console.table(results);
+    if (err) throw err;
+  });
+}
+
+function viewAllDepartments() {
+  connection.query(
+    "SELECT DISTINCT department FROM employee_trackerDB.department",
+    function (err, results) {
+      console.table(results);
+      if (err) throw err;
+    }
+  );
+}
+
+function viewAllRoles() {
+  connection.query(
+    "SELECT DISTINCT title FROM employee_trackerDB.role;",
+    function (err, results) {
+      console.table(results);
+      if (err) throw err;
+    }
+  );
+}
+
+function addDepartment() {
+  inquirer
+    .prompt({
+      name: "newDepartment",
+      type: "input",
+      message: "Which Department would you like to add?",
+    })
+    .then(function (result) {
+      var query = "INSERT INTO department SET?";
+      console.log(query);
+      var query1 = connection.query(query, [{ name: result.newDpt }], function (
+        err
+      ) {
+        if (err) throw err;
+        console.table("Department Created Successfully!");
+      });
+    });
+}
+
+function addRole() {
+  var roleQuery = "SELECT * FROM role;";
+  var departmentQuery = "SELECT * FROM department;";
+
+  connection.query(roleQuery, function (err, roles) {
+    connection.query(departmentQuery, function (err, departments) {
+      if (err) throw err;
+
+      inquirer
+        .prompt([
+          {
+            name: "newRole",
+            type: "rawlist",
+            choices: function () {
+              var arrayOfChoices = [];
+              for (var i = 0; i < roles.length; i++) {
+                arrayOfChoices.push(roles[i].title);
+              }
+
+              return arrayOfChoices;
+            },
+            message: "Which Role would you like to add?",
+          },
+          {
+            name: "newSalary",
+            type: "input",
+            message: "What is the salary you would like to add?",
+          },
+          {
+            name: "choice",
+            type: "rawlist",
+            choices: function () {
+              var arrayOfChoices = [];
+              for (var i = 0; i < departments.length; i++) {
+                arrayOfChoices.push(departments[i].name);
+              }
+
+              return arrayOfChoices;
+            },
+            message: "Which department this role belongs to?",
+          },
+        ])
+        .then(function (result) {
+          for (var i = 0; i < departments.length; i++) {
+            if (departments[i].name === result.choice) {
+              result.department_id = departments[i].id;
+            }
+          }
+          var query = "INSERT INTO role SET ?";
+          const VALUES = {
+            title: result.newRole,
+            salary: result.newSalary,
+            department_id: result.department_id,
+          };
+          connection.query(query, VALUES, function (err) {
+            if (err) throw err;
+            console.table("Role Successfuly created!");
+          });
+        });
+    });
+  });
+}
+
+function updateRole() {
+  var roleQuery = "SELECT * FROM role;";
+  var departmentQuery = "SELECT * FROM department;";
+
+  connection.query(roleQuery, function (err, roles) {
+    connection.query(departmentQuery, function (err, departments) {
+      if (err) throw err;
+      inquirer
+        .prompt([
+          {
+            name: "newRole",
+            type: "rawlist",
+            choices: function () {
+              var arrayOfChoices = [];
+              for (var i = 0; i < roles.length; i++) {
+                arrayOfChoices.push(roles[i].title);
+              }
+
+              return arrayOfChoices;
+            },
+            message: "Which Role would you like to update?",
+          },
+          {
+            name: "newSalary",
+            type: "input",
+            message: "What is the new salary for this role?",
+          },
+          {
+            name: "choice",
+            type: "rawlist",
+            choices: function () {
+              var arrayOfChoices = [];
+              for (var i = 0; i < departments.length; i++) {
+                arrayOfChoices.push(departments[i].name);
+              }
+              return arrayOfChoices;
+            },
+            message: "Which department this role belongs to?",
+          },
+        ])
+        .then(function (result) {
+          for (var i = 0; i < departments.length; i++) {
+            if (departments[i].name === result.choice) {
+              result.department_id = departments[i].id;
+            }
+          }
+          var query =
+            "UPDATE role SET title=?,salary= ? WHERE department_id= ?";
+          const VALUES = [
+            { title: result.newRole },
+            { salary: result.newSalary },
+            { department_id: result.department_id },
+          ];
+          let query1 = connection.query(query, VALUES, function (err) {
+            if (err) throw err;
+            console.table("Role Successfuly Updated!");
+          });
+        });
+    });
   });
 }
