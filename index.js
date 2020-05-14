@@ -71,15 +71,23 @@ function addEmployee() {
         {
           name: "choice",
           type: "rawlist",
+          message: "What is the employee's role?",
           choices: function () {
-            var choiceArray = [];
+            var choiceArray = [
+              "Sales Manager",
+              "Software Engineer",
+              "Lawyer",
+              "Accountant",
+              "Sales Executive",
+              "Lead Engineer",
+              "Legal Team Lead",
+            ];
             for (var i = 0; i < results.length; i++) {
               choiceArray.push(results[i].title);
             }
 
             return choiceArray;
           },
-          message: "What is the employee's role?",
         },
 
         {
@@ -171,7 +179,15 @@ function addRole() {
             name: "newRole",
             type: "rawlist",
             choices: function () {
-              var arrayOfChoices = [];
+              var arrayOfChoices = [
+                "Sales Manager",
+                "Software Engineer",
+                "Lawyer",
+                "Accountant",
+                "Sales Executive",
+                "Lead Engineer",
+                "Legal Team Lead",
+              ];
               for (var i = 0; i < roles.length; i++) {
                 arrayOfChoices.push(roles[i].title);
               }
@@ -233,7 +249,15 @@ function updateRole() {
             name: "newRole",
             type: "rawlist",
             choices: function () {
-              var arrayOfChoices = [];
+              var arrayOfChoices = [
+                "Sales Manager",
+                "Software Engineer",
+                "Lawyer",
+                "Accountant",
+                "Sales Executive",
+                "Lead Engineer",
+                "Legal Team Lead",
+              ];
               for (var i = 0; i < roles.length; i++) {
                 arrayOfChoices.push(roles[i].title);
               }
@@ -251,7 +275,13 @@ function updateRole() {
             name: "choice",
             type: "rawlist",
             choices: function () {
-              var arrayOfChoices = [];
+              var arrayOfChoices = [
+                "Sales",
+                "Engineering",
+                "Legal",
+                "Finance",
+                "Marketing",
+              ];
               for (var i = 0; i < departments.length; i++) {
                 arrayOfChoices.push(departments[i].name);
               }
